@@ -75,9 +75,9 @@ See the [contribution guidelines](https://github.com/nlohmann/json/blob/master/.
 
 You can sponsor this library at [GitHub Sponsors](https://github.com/sponsors/nlohmann).
 
-### :office: Corporate Sponsor
+### :raising_hand: Priority Sponsor
 
-[![](https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Codacy-logo-black.svg/320px-Codacy-logo-black.svg.png)](https://github.com/codacy/About)
+- [Martti Laine](https://github.com/codeclown)
 
 ### :label: Named Sponsors
 
@@ -1273,7 +1273,7 @@ Example:
 ```cmake
 include(FetchContent)
 
-FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz)
+FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)
 FetchContent_MakeAvailable(json)
 
 target_link_libraries(foo PRIVATE nlohmann_json::nlohmann_json)
