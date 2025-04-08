@@ -163,7 +163,7 @@ using the subproject directly.
     - :octicons-question-24: [Bazel website](https://bazel.build)
 
 This repository provides a [Bazel](https://bazel.build/) `MODULE.bazel` and a corresponding `BUILD.bazel` file. Therefore, this
-repository can be referenced within a `MODULE.bazel` by rules such as `archive_override`, `git_override`, or `local_path_override`. To use the library you need to depend on the target `@nlohmann_json//:json` (i.e., via `deps` attribute).
+repository can be referenced within a `MODULE.bazel` by rules such as `archive_override`, `git_override`, or `local_path_override`. To use the library, you need to depend on the target `@nlohmann_json//:json` (i.e., via `deps` attribute).
 
 ??? example
 
@@ -307,7 +307,7 @@ the [nlohmann_json package](https://hunter.readthedocs.io/en/latest/packages/pkg
 hunter_add_package(nlohmann_json)
 ```
 
-Please see the  Hunter project for any issues regarding the packaging.
+Please see the Hunter project for any issues regarding the packaging.
 
 ??? example
 
@@ -824,12 +824,3 @@ to your podfile (see [an example](https://bitbucket.org/benman/nlohmann_json-coc
 !!! warning
 
     The module is outdated as the respective [pod](https://cocoapods.org/pods/nlohmann_json) has not been updated in years.
-
-## wsjcpp
-
-If you are using [`wsjcpp`](http://wsjcpp.org), you can use the command `wsjcpp install "https://github.com/nlohmann/json:develop"`
-to get the latest version. Note you can change the branch `:develop` to an existing tag or another branch.
-
-!!! warning
-
-    The package manager is outdated as the respective [repository](https://github.com/wsjcpp/wsjcpp) has not been updated in years.
