@@ -1,6 +1,6 @@
 //     __ _____ _____ _____
 //  __|  |   __|     |   | |  JSON for Modern C++ (supporting code)
-// |  |  |__   |  |  | | | |  version 3.11.3
+// |  |  |__   |  |  | | | |  version 3.12.0
 // |_____|_____|_____|_|___|  https://github.com/nlohmann/json
 //
 // SPDX-FileCopyrightText: 2013 - 2025 Niels Lohmann <https://nlohmann.me>
@@ -34,6 +34,14 @@ using ordered_json = nlohmann::ordered_json;
 #ifdef JSON_HAS_CPP_17
     #include <any>
     #include <variant>
+#endif
+
+#ifdef JSON_HAS_CPP_17
+    #if __has_include(<optional>)
+        #include <optional>
+    #elif __has_include(<experimental/optional>)
+        #include <experimental/optional>
+    #endif
 #endif
 
 #ifdef JSON_HAS_CPP_20
@@ -388,7 +396,20 @@ struct Example_3810
     Example_3810() = default;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Example_3810, bla); // NOLINT(misc-use-internal-linkage)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Example_3810, bla) // NOLINT(misc-use-internal-linkage)
+
+/////////////////////////////////////////////////////////////////////
+// for #4740
+/////////////////////////////////////////////////////////////////////
+
+#ifdef JSON_HAS_CPP_17
+struct Example_4740
+{
+    std::optional<std::string> host = std::nullopt;
+    std::optional<int> port = std::nullopt;
+    NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(Example_4740, host, port)
+};
+#endif
 
 TEST_CASE("regression tests 2")
 {
@@ -545,7 +566,7 @@ TEST_CASE("regression tests 2")
             const auto length = 300;
 
             json dump_test;
-            dump_test["1"] = std::string(length, -1);
+            dump_test["1"] = std::string(length, static_cast<std::string::value_type>(-1));
 
             std::string expected = R"({"1":")";
             for (int i = 0; i < length; ++i)
@@ -562,7 +583,7 @@ TEST_CASE("regression tests 2")
             const auto length = 500;
 
             json dump_test;
-            dump_test["1"] = std::string(length, -2);
+            dump_test["1"] = std::string(length, static_cast<std::string::value_type>(-2));
 
             std::string expected = R"({"1":")";
             for (int i = 0; i < length; ++i)
@@ -1037,6 +1058,28 @@ TEST_CASE("regression tests 2")
         oj["test"] = states;
         CHECK(oj["test"].dump() == expected);
     }
+
+#ifdef JSON_HAS_CPP_17
+    SECTION("issue #4740 - build issue with std::optional")
+    {
+        const auto t1 = Example_4740();
+        const auto j1 = nlohmann::json(t1);
+        CHECK(j1.dump() == "{\"host\":null,\"port\":null}");
+        const auto t2 = j1.get<Example_4740>();
+        CHECK(!t2.host.has_value());
+        CHECK(!t2.port.has_value());
+
+        // improve coverage
+        auto t3 = Example_4740();
+        t3.port = 80;
+        t3.host = "example.com";
+        const auto j2 = nlohmann::json(t3);
+        CHECK(j2.dump() == "{\"host\":\"example.com\",\"port\":80}");
+        const auto t4 = j2.get<Example_4740>();
+        CHECK(t4.host.has_value());
+        CHECK(t4.port.has_value());
+    }
+#endif
 }
 
 DOCTEST_CLANG_SUPPRESS_WARNING_POP

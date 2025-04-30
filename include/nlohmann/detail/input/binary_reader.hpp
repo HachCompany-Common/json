@@ -1,6 +1,6 @@
 //     __ _____ _____ _____
 //  __|  |   __|     |   | |  JSON for Modern C++
-// |  |  |__   |  |  | | | |  version 3.11.3
+// |  |  |__   |  |  | | | |  version 3.12.0
 // |_____|_____|_____|_|___|  https://github.com/nlohmann/json
 //
 // SPDX-FileCopyrightText: 2013 - 2025 Niels Lohmann <https://nlohmann.me>
@@ -53,7 +53,7 @@ enum class cbor_tag_handler_t
 
 @note from https://stackoverflow.com/a/1001328/266378
 */
-static inline bool little_endianness(int num = 1) noexcept
+inline bool little_endianness(int num = 1) noexcept
 {
     return *reinterpret_cast<char*>(&num) == 1;
 }
@@ -2192,8 +2192,16 @@ class binary_reader
                     result = 1;
                     for (auto i : dim)
                     {
+                        // Pre-multiplication overflow check: if i > 0 and result > SIZE_MAX/i, then result*i would overflow.
+                        // This check must happen before multiplication since overflow detection after the fact is unreliable
+                        // as modular arithmetic can produce any value, not just 0 or SIZE_MAX.
+                        if (JSON_HEDLEY_UNLIKELY(i > 0 && result > (std::numeric_limits<std::size_t>::max)() / i))
+                        {
+                            return sax->parse_error(chars_read, get_token_string(), out_of_range::create(408, exception_message(input_format, "excessive ndarray size caused overflow", "size"), nullptr));
+                        }
                         result *= i;
-                        if (result == 0 || result == npos) // because dim elements shall not have zeros, result = 0 means overflow happened; it also can't be npos as it is used to initialize size in get_ubjson_size_type()
+                        // Additional post-multiplication check to catch any edge cases the pre-check might miss
+                        if (result == 0 || result == npos)
                         {
                             return sax->parse_error(chars_read, get_token_string(), out_of_range::create(408, exception_message(input_format, "excessive ndarray size caused overflow", "size"), nullptr));
                         }
@@ -2826,17 +2834,22 @@ class binary_reader
         {
             return;
         }
-        if constexpr(std::is_integral_v<NumberType>)
+        else if constexpr(std::is_integral_v<NumberType>)
         {
             number = std::byteswap(number);
             return;
         }
-#endif
-        auto* ptr = reinterpret_cast<std::uint8_t*>(&number);
-        for (std::size_t i = 0; i < sz / 2; ++i)
+        else
         {
-            std::swap(ptr[i], ptr[sz - i - 1]);
+#endif
+            auto* ptr = reinterpret_cast<std::uint8_t*>(&number);
+            for (std::size_t i = 0; i < sz / 2; ++i)
+            {
+                std::swap(ptr[i], ptr[sz - i - 1]);
+            }
+#ifdef __cpp_lib_byteswap
         }
+#endif
     }
 
     /*
