@@ -57,6 +57,7 @@ nav:
       - home/customers.md
       - home/sponsors.md
   - Features:
+      - features/index.md
       - features/arbitrary_types.md
       - Binary Formats:
           - features/binary_formats/index.md
@@ -67,16 +68,18 @@ nav:
           - features/binary_formats/ubjson.md
       - features/binary_values.md
       - features/comments.md
-      - features/trailing_commas.md
+      - features/conversions.md
+      - features/creating_values.md
       - Element Access:
           - features/element_access/index.md
           - features/element_access/unchecked_access.md
           - features/element_access/checked_access.md
           - features/element_access/default_value.md
       - features/iterators.md
-      - features/json_pointer.md
-      - features/json_patch.md
       - features/merge_patch.md
+      - features/json_patch.md
+      - features/json_pointer.md
+      - features/modifying_values.md
       - features/modules.md
       - 'nlohmann Namespace': features/namespace.md
       - features/object_order.md
@@ -87,8 +90,10 @@ nav:
           - features/parsing/parser_callbacks.md
           - features/parsing/sax_interface.md
       - features/assertions.md
+      - features/serialization.md
       - features/enum_conversion.md
       - features/macros.md
+      - features/trailing_commas.md
       - Types:
           - features/types/index.md
           - features/types/number_handling.md
@@ -133,6 +138,7 @@ nav:
           - 'exception': api/basic_json/exception.md
           - 'find': api/basic_json/find.md
           - 'flatten': api/basic_json/flatten.md
+          - 'format_as': api/basic_json/format_as.md
           - 'from_bjdata': api/basic_json/from_bjdata.md
           - 'from_bson': api/basic_json/from_bson.md
           - 'from_cbor': api/basic_json/from_cbor.md
@@ -145,6 +151,7 @@ nav:
           - 'get_ptr': api/basic_json/get_ptr.md
           - 'get_ref': api/basic_json/get_ref.md
           - 'get_to': api/basic_json/get_to.md
+          - 'std::formatter&lt;basic_json&gt;': api/basic_json/std_formatter.md
           - 'std::hash&lt;basic_json&gt;': api/basic_json/std_hash.md
           - 'input_format_t': api/basic_json/input_format_t.md
           - 'insert': api/basic_json/insert.md
@@ -270,6 +277,7 @@ nav:
       - macros:
           - 'Overview': api/macros/index.md
           - 'JSON_ASSERT': api/macros/json_assert.md
+          - 'JSON_BRACE_INIT_COPY_SEMANTICS': api/macros/json_brace_init_copy_semantics.md
           - 'JSON_CATCH_USER, JSON_THROW_USER, JSON_TRY_USER': api/macros/json_throw_user.md
           - 'JSON_DIAGNOSTICS': api/macros/json_diagnostics.md
           - 'JSON_DIAGNOSTIC_POSITIONS': api/macros/json_diagnostic_positions.md
@@ -278,6 +286,7 @@ nav:
           - 'JSON_HAS_EXPERIMENTAL_FILESYSTEM, JSON_HAS_FILESYSTEM': api/macros/json_has_filesystem.md
           - 'JSON_HAS_RANGES': api/macros/json_has_ranges.md
           - 'JSON_HAS_STATIC_RTTI': api/macros/json_has_static_rtti.md
+          - 'JSON_HAS_STD_FORMAT': api/macros/json_has_std_format.md
           - 'JSON_HAS_THREE_WAY_COMPARISON': api/macros/json_has_three_way_comparison.md
           - 'JSON_NOEXCEPTION': api/macros/json_noexception.md
           - 'JSON_NO_IO': api/macros/json_no_io.md

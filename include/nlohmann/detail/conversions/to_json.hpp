@@ -214,10 +214,7 @@ struct external_constructor<value_t::array>
         j.m_data.m_type = value_t::array;
         j.m_data.m_value = value_t::array;
         j.m_data.m_value.array->resize(arr.size());
-        if (arr.size() > 0)
-        {
-            std::copy(std::begin(arr), std::end(arr), j.m_data.m_value.array->begin());
-        }
+        std::copy(std::begin(arr), std::end(arr), j.m_data.m_value.array->begin());
         j.set_parents();
         j.assert_invariant();
     }
@@ -449,6 +446,10 @@ inline void to_json(BasicJsonType& j, const std::basic_string<char8_t, Tr, Alloc
     j = std::basic_string<char, std::char_traits<char>, OtherAllocator>(s.begin(), s.end(), s.get_allocator());
 }
 #endif
+
+// Workaround for MSVC 19.51 (and possibly later): in large cpp files, the compiler may fail to resolve with generic has_to_json (issue #4996)
+template<typename BasicJsonType>
+struct has_to_json<BasicJsonType, std_fs::path, void> : std::true_type {};
 
 template<typename BasicJsonType>
 inline void to_json(BasicJsonType& j, const std_fs::path& p)
