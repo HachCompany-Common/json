@@ -11,8 +11,8 @@ static bool sax_parse(InputType&& i,
                       const bool ignore_trailing_commas = false);
 
 // (2)
-template<class IteratorType, class SAX>
-static bool sax_parse(IteratorType first, IteratorType last,
+template<class IteratorType, class SAX, class SentinelType = IteratorType>
+static bool sax_parse(IteratorType first, SentinelType last,
                       SAX* sax,
                       input_format_t format = input_format_t::json,
                       const bool strict = true,
@@ -23,10 +23,11 @@ static bool sax_parse(IteratorType first, IteratorType last,
 Read from input and generate SAX events
 
 1. Read from a compatible input.
-2. Read from a pair of character iterators
+2. Read from a pair of character iterators, or an iterator and a sentinel of a different type (C++20 ranges support)
     
     The value_type of the iterator must be an integral type with a size of 1, 2, or 4 bytes, which will be interpreted
-    respectively as UTF-8, UTF-16, and UTF-32.
+    respectively as UTF-8, UTF-16, and UTF-32. If `SentinelType` differs from `IteratorType`, it must be comparable to
+    the iterator type with `operator!=`.
 
 The SAX event lister must follow the interface of [`json_sax`](../json_sax/index.md).
 
@@ -39,12 +40,18 @@ The SAX event lister must follow the interface of [`json_sax`](../json_sax/index
     - a `FILE` pointer
     - a C-style array of characters
     - a pointer to a null-terminated string of single byte characters
-    - an object `obj` for which `begin(obj)` and `end(obj)` produces a valid pair of
-      iterators.
+    - a container `obj` for which `begin(obj)` and `end(obj)` produce a valid pair of iterators
+      (as found via ADL or member functions, with semantics compatible to `std::begin` and `std::end`)
 
 `IteratorType`
 :   a compatible iterator type for overload (2); a pair of character iterators whose `value_type` is an integral type
     with a size of 1, 2, or 4 bytes (interpreted respectively as UTF-8, UTF-16, and UTF-32)
+
+`SentinelType`
+:   defaults to `IteratorType`; may be a different type comparable to `IteratorType` via `operator!=`, for overload (2), for instance.
+
+    - a custom sentinel type for C++20 ranges
+    - `std::default_sentinel_t`, when `IteratorType` is `std::counted_iterator`
 
 `SAX`
 :   a class fulfilling the SAX event listener interface; see [`json_sax`](../json_sax/index.md)
@@ -76,7 +83,7 @@ The SAX event lister must follow the interface of [`json_sax`](../json_sax/index
 :   iterator to the start of a character range
 
 `last` (in)
-:   iterator to the end of a character range
+:   iterator to the end of a character range, or a sentinel value that compares equal to the end iterator with `operator!=`
 
 ## Return value
 
@@ -126,7 +133,9 @@ A UTF-8 byte order mark is silently ignored.
 
 - Added in version 3.2.0.
 - Ignoring comments via `ignore_comments` added in version 3.9.0.
-- Added `ignore_trailing_commas` in version 3.12.x.
+- Added `ignore_trailing_commas` in version 3.13.0.
+- Extended container support (1) to include types with lvalue-only ADL `begin`/`end` (matching `std::begin`/`std::end` semantics) in version 3.13.0.
+- Extended overload (2) to accept heterogeneous iterator+sentinel pairs (C++20 ranges support) in version 3.13.0.
 
 !!! warning "Deprecation"
 

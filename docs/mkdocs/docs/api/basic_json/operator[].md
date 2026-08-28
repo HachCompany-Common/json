@@ -124,6 +124,15 @@ Strong exception safety: if an exception occurs, the original value stays intact
       filled with `#!json null`.
     - The special value `-` is treated as a synonym for the index past the end.
 
+    !!! note "Creating intermediate levels that don't exist yet"
+
+        When the JSON pointer traverses intermediate levels that don't exist at all yet (not just a missing
+        leaf), each missing level is created as an array or an object depending on whether the corresponding
+        pointer token parses as a non-negative integer: a numeric token creates an array, a non-numeric token
+        creates an object. For example, on an initially `#!json null` value, `/foo/0/0/0` creates nested arrays,
+        while `/foo/one/one/one` creates nested objects. This is not specified by the JSON Pointer RFC; it is
+        this library's own, intentional disambiguation rule. See also [JSON Pointer](../../features/json_pointer.md).
+
 ## Examples
 
 ??? example "Example: (1) access specified array element"
@@ -251,5 +260,6 @@ Strong exception safety: if an exception occurs, the original value stays intact
 1. Added in version 1.0.0.
 2. Added in version 1.0.0. Added overloads for `T* key` in version 1.1.0. Removed overloads for `T* key` (replaced by 3)
    in version 3.11.0.
-3. Added in version 3.11.0.
+3. Added in version 3.11.0. Fixed in version 3.13.0 to consistently accept `std::string_view`-convertible keys, as
+   already supported by [`at`](at.md), [`value`](value.md), [`find`](find.md), and other lookup functions.
 4. Added in version 2.0.0.

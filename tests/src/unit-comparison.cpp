@@ -15,6 +15,8 @@
 
 #include "doctest_compatibility.h"
 
+#include <cstdint>
+
 #define JSON_TESTS_PRIVATE
 #include <nlohmann/json.hpp>
 using nlohmann::json;
@@ -255,6 +257,75 @@ TEST_CASE("lexicographical comparison operators")
             {f_, f_, f_, f_, f_, f_, f_, f_, f_, f_, f_, f_, f_, f_, f_, f_, f_, f_, f_, f_, f_, f_}, // 21
         };
 
+        SECTION("signed/unsigned mixed comparison above INT64_MAX")
+        {
+            const json above_int64_max = static_cast<std::uint64_t>((std::numeric_limits<std::int64_t>::max)()) + 1ULL;
+            const json max_uint64 = (std::numeric_limits<std::uint64_t>::max)();
+            const json negative_one = -1;
+            const json one = 1;
+            const json max_int64 = (std::numeric_limits<std::int64_t>::max)();
+
+            CHECK_FALSE(above_int64_max == negative_one);
+            CHECK(above_int64_max != negative_one);
+            CHECK(negative_one < above_int64_max);
+            CHECK(negative_one <= above_int64_max);
+            CHECK_FALSE(negative_one > above_int64_max);
+            CHECK_FALSE(negative_one >= above_int64_max);
+            CHECK_FALSE(above_int64_max < negative_one);
+            CHECK_FALSE(above_int64_max <= negative_one);
+            CHECK(above_int64_max > negative_one);
+            CHECK(above_int64_max >= negative_one);
+            CHECK(negative_one != above_int64_max);
+            CHECK_FALSE(negative_one == above_int64_max);
+
+            CHECK_FALSE(max_uint64 == negative_one);
+            CHECK(max_uint64 != negative_one);
+            CHECK(negative_one < max_uint64);
+            CHECK(negative_one <= max_uint64);
+            CHECK_FALSE(negative_one > max_uint64);
+            CHECK_FALSE(negative_one >= max_uint64);
+            CHECK_FALSE(max_uint64 < negative_one);
+            CHECK_FALSE(max_uint64 <= negative_one);
+            CHECK(max_uint64 > negative_one);
+            CHECK(max_uint64 >= negative_one);
+            CHECK(negative_one != max_uint64);
+            CHECK_FALSE(negative_one == max_uint64);
+
+            CHECK_FALSE(one == above_int64_max);
+            CHECK(one != above_int64_max);
+            CHECK(one < above_int64_max);
+            CHECK(one <= above_int64_max);
+            CHECK_FALSE(one > above_int64_max);
+            CHECK_FALSE(one >= above_int64_max);
+            CHECK_FALSE(above_int64_max < one);
+            CHECK_FALSE(above_int64_max <= one);
+            CHECK(above_int64_max > one);
+            CHECK(above_int64_max >= one);
+
+            CHECK_FALSE(max_int64 == above_int64_max);
+            CHECK(max_int64 != above_int64_max);
+            CHECK(max_int64 < above_int64_max);
+            CHECK(max_int64 <= above_int64_max);
+            CHECK_FALSE(max_int64 > above_int64_max);
+            CHECK_FALSE(max_int64 >= above_int64_max);
+            CHECK_FALSE(above_int64_max < max_int64);
+            CHECK_FALSE(above_int64_max <= max_int64);
+            CHECK(above_int64_max > max_int64);
+            CHECK(above_int64_max >= max_int64);
+
+#if JSON_HAS_THREE_WAY_COMPARISON
+            // JSON_HAS_CPP_20 (do not remove; see note at top of file)
+            CHECK((negative_one <=> above_int64_max) == std::partial_ordering::less); // *NOPAD*
+            CHECK((above_int64_max <=> negative_one) == std::partial_ordering::greater); // *NOPAD*
+            CHECK((negative_one <=> max_uint64) == std::partial_ordering::less); // *NOPAD*
+            CHECK((max_uint64 <=> negative_one) == std::partial_ordering::greater); // *NOPAD*
+            CHECK((one <=> above_int64_max) == std::partial_ordering::less); // *NOPAD*
+            CHECK((above_int64_max <=> one) == std::partial_ordering::greater); // *NOPAD*
+            CHECK((max_int64 <=> above_int64_max) == std::partial_ordering::less); // *NOPAD*
+            CHECK((above_int64_max <=> max_int64) == std::partial_ordering::greater); // *NOPAD*
+#endif
+        }
+
         SECTION("compares unordered")
         {
             std::vector<std::vector<bool>> expected =
@@ -369,6 +440,7 @@ TEST_CASE("lexicographical comparison operators")
         SECTION("comparison: not equal")
         {
             // check that two values compare unequal as expected
+            // operator!= now means exactly !(a==b) without special cases for NaN/discarded
             for (size_t i = 0; i < j_values.size(); ++i)
             {
                 for (size_t j = 0; j < j_values.size(); ++j)
@@ -376,25 +448,12 @@ TEST_CASE("lexicographical comparison operators")
                     CAPTURE(i)
                     CAPTURE(j)
 
-                    if (json::compares_unordered(j_values[i], j_values[j], true))
-                    {
-                        // if two values compare unordered,
-                        // check that the boolean comparison result is always false
-                        CHECK_FALSE(j_values[i] != j_values[j]);
-                    }
-                    else
-                    {
-                        // otherwise, check that they compare according to their definition
-                        // as the inverse of equal
-                        CHECK((j_values[i] != j_values[j]) == !(j_values[i] == j_values[j]));
-                    }
+                    CHECK((j_values[i] != j_values[j]) == !(j_values[i] == j_values[j]));
                 }
             }
 
             // compare with null pointer
             const json j_null;
-            CHECK((j_null != nullptr) == false);
-            CHECK((nullptr != j_null) == false);
             CHECK((j_null != nullptr) == !(j_null == nullptr));
             CHECK((nullptr != j_null) == !(nullptr == j_null));
         }
@@ -594,3 +653,34 @@ TEST_CASE("lexicographical comparison operators")
     }
 #endif
 }
+
+#if JSON_HAS_THREE_WAY_COMPARISON
+// JSON_HAS_CPP_20 (do not remove; see note at top of file)
+
+TEST_CASE("regression #3868 - heterogeneous comparisons compile under C++20 (P2468R2)")
+{
+    // Issue #3868: operator!= was preventing compiler from synthesizing reversed
+    // operator== candidates under C++20's P2468R2 rewritten candidate rules.
+    // Verify that heterogeneous comparisons now work.
+
+    SECTION("string vs json")
+    {
+        std::string s = "string";
+        json j = "string";
+        CHECK(s == j);
+        CHECK(j == s);
+        CHECK_FALSE(s != j);
+        CHECK_FALSE(j != s);
+    }
+
+    SECTION("other heterogeneous types")
+    {
+        int i = 42;
+        json j = 42;
+        CHECK(i == j);
+        CHECK(j == i);
+        CHECK_FALSE(i != j);
+        CHECK_FALSE(j != i);
+    }
+}
+#endif

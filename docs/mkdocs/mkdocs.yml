@@ -56,6 +56,7 @@ nav:
       - home/architecture.md
       - home/customers.md
       - home/sponsors.md
+      - home/debugging.md
   - Features:
       - features/index.md
       - features/arbitrary_types.md
@@ -307,6 +308,7 @@ nav:
           - 'NLOHMANN_JSON_VERSION_MAJOR, NLOHMANN_JSON_VERSION_MINOR, NLOHMANN_JSON_VERSION_PATCH': api/macros/nlohmann_json_version_major.md
   - Community:
       - community/index.md
+      - community/ecosystem.md
       - "Code of Conduct": community/code_of_conduct.md
       - community/contribution_guidelines.md
       - community/quality_assurance.md
@@ -367,6 +369,9 @@ markdown_extensions:
       auto_append:
         - ../includes/glossary.md
 
+hooks:
+  - hooks/copy_markdown_source.py
+
 plugins:
   - search:
       separator: '[\s\-\.]'
@@ -389,6 +394,33 @@ plugins:
         - https://nlohmann.github.io/json/*
         - mailto:*
   - privacy
+  - llmstxt:
+      markdown_description: >
+        JSON for Modern C++ is a C++11 header-only library implementing a JSON
+        value type with an STL-like API, JSON Pointer/Patch, CBOR/MessagePack/
+        BSON/UBJSON/BJData binary format support, and a SAX-style parser interface.
+      sections:
+        Home:
+          - index.md
+          - home/*.md
+        Features:
+          - features/*.md
+          - features/binary_formats/*.md
+          - features/element_access/*.md
+          - features/parsing/*.md
+          - features/types/*.md
+        Integration:
+          - integration/*.md
+        API Documentation:
+          - api/*.md
+          - api/basic_json/*.md
+          - api/adl_serializer/*.md
+          - api/byte_container_with_subtype/*.md
+          - api/json_pointer/*.md
+          - api/json_sax/*.md
+          - api/macros/*.md
+        Community:
+          - community/*.md
 
 extra_css:
   - css/custom.css

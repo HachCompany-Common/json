@@ -1921,6 +1921,15 @@ TEST_CASE("single CBOR roundtrip")
     }
 }
 
+TEST_CASE("Parse CBOR directly from a file using iterator and sentinel")
+{
+    std::string const filename = TEST_DATA_DIRECTORY "/json_testsuite/sample.json.cbor";
+    std::ifstream file(filename, std::ios::binary);
+    const std::istreambuf_iterator<char> first(file);
+    const json parsed = json::from_cbor(first, utils::istreambuf_sentinel{});
+    CHECK((parsed.is_object() || parsed.is_array()));
+}
+
 #if !defined(JSON_NOEXCEPTION)
 TEST_CASE("CBOR regressions")
 {
@@ -1989,6 +1998,42 @@ TEST_CASE("CBOR regressions")
     }
 }
 #endif
+
+TEST_CASE("CBOR definite length equal to the indefinite-length sentinel")
+{
+    // A definite-length array or map whose declared element count equals the
+    // reserved unknown_size() sentinel (SIZE_MAX) must be rejected. Otherwise
+    // it is read as an indefinite-length container and the following bytes are
+    // silently accepted instead of the (impossible) count being reported.
+    json _;
+
+    SECTION("array")
+    {
+        // 0x9B: array with eight-byte length; length = 0xFFFFFFFFFFFFFFFF
+        const std::vector<uint8_t> input = {0x9B, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01, 0x02, 0xFF};
+        CHECK_THROWS_WITH_AS(_ = json::from_cbor(input), "[json.exception.out_of_range.408] syntax error while parsing CBOR size: excessive array size", json::out_of_range&);
+    }
+
+    SECTION("map")
+    {
+        // 0xBB: map with eight-byte length; length = 0xFFFFFFFFFFFFFFFF
+        const std::vector<uint8_t> input = {0xBB, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x61, 0x61, 0x01, 0xFF};
+        CHECK_THROWS_WITH_AS(_ = json::from_cbor(input), "[json.exception.out_of_range.408] syntax error while parsing CBOR size: excessive map size", json::out_of_range&);
+    }
+
+    SECTION("indefinite-length containers are unaffected")
+    {
+        CHECK(json::from_cbor(std::vector<uint8_t>({0x9F, 0x01, 0x02, 0xFF})) == json({1, 2}));
+        CHECK(json::from_cbor(std::vector<uint8_t>({0xBF, 0x61, 0x61, 0x01, 0xFF})) == json({{"a", 1}}));
+    }
+
+    SECTION("ordinary four-byte length containers are unaffected")
+    {
+        // 0x9A/0xBA carry a four-byte length; a normal count still parses
+        CHECK(json::from_cbor(std::vector<uint8_t>({0x9A, 0x00, 0x00, 0x00, 0x02, 0x01, 0x02})) == json({1, 2}));
+        CHECK(json::from_cbor(std::vector<uint8_t>({0xBA, 0x00, 0x00, 0x00, 0x01, 0x61, 0x61, 0x01})) == json({{"a", 1}}));
+    }
+}
 
 TEST_CASE("CBOR roundtrips" * doctest::skip())
 {
@@ -2300,7 +2345,7 @@ TEST_CASE("all CBOR first bytes")
 }
 #endif
 
-TEST_CASE("examples from RFC 7049 Appendix A")
+TEST_CASE("examples from RFC 8949 Appendix A")
 {
     SECTION("numbers")
     {
@@ -2520,11 +2565,16 @@ TEST_CASE("Tagged values")
     const json j = "s";
     auto v = json::to_cbor(j);
 
-    SECTION("0xC6..0xD4")
+    const json j_bin_payload = json::binary(std::vector<std::uint8_t> {0x01, 0x02, 0x03});
+    auto v_bin_payload = json::to_cbor(j_bin_payload);
+
+    SECTION("0xC0..0xD7")
     {
         for (const auto b : std::vector<std::uint8_t>
     {
-        0xC6, 0xC7, 0xC8, 0xC9, 0xCA, 0xCB, 0xCC, 0xCD, 0xCE, 0xCF, 0xD0, 0xD1, 0xD2, 0xD3, 0xD4
+        0xC0, 0xC1, 0xC2, 0xC3, 0xC4, 0xC5,
+        0xC6, 0xC7, 0xC8, 0xC9, 0xCA, 0xCB, 0xCC, 0xCD, 0xCE, 0xCF, 0xD0, 0xD1, 0xD2, 0xD3, 0xD4,
+        0xD5, 0xD6, 0xD7
     })
         {
             CAPTURE(b);
@@ -2544,6 +2594,12 @@ TEST_CASE("Tagged values")
 
             auto j_tagged_stored = json::from_cbor(v_tagged, true, true, json::cbor_tag_handler_t::store);
             CHECK(j_tagged_stored == j);
+
+            auto v_binary_tagged = v_bin_payload;
+            v_binary_tagged.insert(v_binary_tagged.begin(), b);
+            auto j_binary_tagged_stored = json::from_cbor(v_binary_tagged, true, true, json::cbor_tag_handler_t::store);
+            CHECK(j_binary_tagged_stored == j_bin_payload);
+            CHECK(!j_binary_tagged_stored.get_binary().has_subtype());
         }
     }
 

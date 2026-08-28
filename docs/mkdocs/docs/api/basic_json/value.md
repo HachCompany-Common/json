@@ -17,6 +17,8 @@ ValueType value(const json_pointer& ptr,
                 const ValueType& default_value) const;
 ```
 
+This is equivalent to Python's `dict.get(key, default)`.
+
 1. Returns either a copy of an object's element at the specified key `key` or a given default value if no element with
    key `key` exists.
    
@@ -184,4 +186,6 @@ changes to any JSON value.
 
 1. Added in version 1.0.0. Changed parameter `default_value` type from `const ValueType&` to `ValueType&&` in version 3.11.0.
 2. Added in version 3.11.0. Made `ValueType` the first template parameter in version 3.11.2.
-3. Added in version 2.0.2. Extended to work with arrays in version 3.12.x.
+3. Added in version 2.0.2. Extended to work with arrays in version 3.13.0, including fixing an issue where resolving
+   `ptr` through an array unexpectedly threw `out_of_range` instead of returning the resolved element (or
+   `default_value`, as documented).

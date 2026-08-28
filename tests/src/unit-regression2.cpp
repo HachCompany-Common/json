@@ -798,7 +798,9 @@ TEST_CASE("regression tests 2")
 
 #ifdef JSON_HAS_CPP_20
 #ifndef _LIBCPP_VERSION // see https://github.com/nlohmann/json/issues/4490
-#if __has_include(<span>)
+    // classic Intel ICC reports <span> as includable but cannot actually compile
+    // std::span/std::as_bytes usage below
+#if __has_include(<span>) && !defined(__ICC) && !defined(__INTEL_COMPILER)
     SECTION("issue #2546 - parsing containers of std::byte")
     {
         const char DATA[] = R"("Hello, world!")"; // NOLINT(misc-const-correctness,cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays)
@@ -1134,6 +1136,40 @@ TEST_CASE("regression tests 2")
         CHECK((decoded == json_4804::array()));
     }
 
+    SECTION("discussion #4209 - custom BinaryType direct assignment and round-tripping")
+    {
+        // Test that assigning a custom BinaryType directly creates a binary value, not an array
+        const std::vector<std::byte> original{std::byte{1}, std::byte{2}, std::byte{3}};
+        const json_4804 j = original;
+        CHECK(j.is_binary());
+        CHECK(!j.is_array());
+
+        // Test round-tripping: extracting the binary value back as the custom container type
+        const auto extracted = j.get<std::vector<std::byte>>();
+        CHECK(extracted == original);
+
+        // Test that the default json alias behavior is unchanged: std::vector<uint8_t> -> array
+        const json default_json = std::vector<std::uint8_t> {1, 2, 3};
+        CHECK(default_json.is_array());
+        CHECK(!default_json.is_binary());
+    }
+
+    SECTION("discussion #4209 - custom BinaryType extraction from parsed array")
+    {
+        // Test that extracting a custom BinaryType from a parsed JSON array still works
+        // (not just from a binary-typed node)
+        const auto j = json_4804::parse("[1,2,3]");
+        CHECK(j.is_array());
+        CHECK(!j.is_binary());
+
+        // Extracting as custom BinaryType should work from arrays
+        const auto extracted = j.get<std::vector<std::byte>>();
+        CHECK(extracted.size() == 3);
+        CHECK(extracted[0] == std::byte{1});
+        CHECK(extracted[1] == std::byte{2});
+        CHECK(extracted[2] == std::byte{3});
+    }
+
     SECTION("issue #5046 - implicit conversion of return json to std::optional no longer implicit")
     {
         const json jval{};
@@ -1163,6 +1199,46 @@ TEST_CASE("regression tests 2")
     }
 #endif
 
+#if JSON_HAS_RANGES && !defined(__MINGW32__)
+    SECTION("issue #4916 - constructing array from C++20 ranges view does not work")
+    {
+        std::vector<int> nums{1, 2, 37, 42, 21};
+        auto filteredNums = nums | std::views::filter([](int i)
+        {
+            return i > 10;
+        });
+        json const j(filteredNums);
+        CHECK(j.type() == json::value_t::array);
+        CHECK(j == json({37, 42, 21}));
+    }
+#endif
+
+    // owning_view is not available in libstdc++ < 12
+#if JSON_HAS_RANGES && !defined(__MINGW32__) && !(defined(__GLIBCXX__) && _GLIBCXX_RELEASE < 12)
+    SECTION("issue #4916 - constructing array from prvalue C++20 ranges view (owning_view)")
+    {
+        json const j(std::vector<int> {1, 2, 37, 42, 21} | std::views::filter([](int i)
+        {
+            return i > 10;
+        }));
+        CHECK(j.type() == json::value_t::array);
+        CHECK(j == json({37, 42, 21}));
+    }
+#endif
+
+#if JSON_HAS_RANGES && !defined(__MINGW32__)
+    SECTION("issue #4916 - constructing array from C++20 transform view (prvalue elements)")
+    {
+        std::vector<int> nums{1, 2, 3};
+        auto t = nums | std::views::transform([](int i) noexcept
+        {
+            return i * 2;
+        });
+        json const j(t);
+        CHECK(j.type() == json::value_t::array);
+        CHECK(j == json({2, 4, 6}));
+    }
+#endif
 }
 
 TEST_CASE_TEMPLATE("issue #4798 - nlohmann::json::to_msgpack() encode float NaN as double", T, double, float) // NOLINT(readability-math-missing-parentheses, bugprone-throwing-static-initialization)
@@ -1452,6 +1528,42 @@ TEST_CASE("issue #4320 - custom base class must not leak nlohmann::detail into A
     json j;
     to_json(j, p);
     CHECK(j == json({{"x", 1.0}, {"y", 2.0}, {"z", 3.0}}));
+}
+
+TEST_CASE("issue #5338 - truncated CBOR tagged binary subtype is rejected")
+{
+    const std::vector<std::vector<std::uint8_t>> truncated_tags =
+    {
+        {0xD8},
+        {0xD9, 0x00},
+        {0xDA, 0x00, 0x00, 0x00},
+        {0xDB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+    };
+
+    for (const auto& data : truncated_tags)
+    {
+        CAPTURE(data);
+        for (const auto tag_handler :
+                {
+                    json::cbor_tag_handler_t::ignore, json::cbor_tag_handler_t::store
+                })
+        {
+            CAPTURE(tag_handler);
+            const auto result = json::from_cbor(data, true, false, tag_handler);
+            CHECK(result.is_discarded());
+        }
+    }
+}
+
+TEST_CASE("issue #5402 - update(merge_objects=true) overwrites a primitive with an object")
+{
+    json t = {{"k", 1}};
+    t.update(json{{"k", {{"x", 2}}}}, true);
+    CHECK(t == json({{"k", {{"x", 2}}}}));
+
+    json mixed = {{"keep", {{"a", 1}}}, {"replace", 1}};
+    mixed.update(json{{"keep", {{"b", 2}}}, {"replace", {{"x", 2}}}}, true);
+    CHECK(mixed == json({{"keep", {{"a", 1}, {"b", 2}}}, {"replace", {{"x", 2}}}}));
 }
 
 DOCTEST_CLANG_SUPPRESS_WARNING_POP

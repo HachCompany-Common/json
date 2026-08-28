@@ -129,6 +129,29 @@ As described [above](#parse-errors-reading-non-ascii-characters), the library as
     }
     ```
 
+## Usage
+
+### Thread safety
+
+!!! question
+
+    Is `basic_json` thread-safe?
+
+No. `basic_json` provides no built-in synchronization, the same as `std::map` or `std::vector`. Concurrent reads of
+the same value from multiple threads are safe, as are concurrent (non-overlapping) accesses to independent `json`
+objects. However, any concurrent write to a `json` object -- or a concurrent read while another thread writes to the
+same object -- is a data race and requires external synchronization (e.g., a `std::mutex`) by the caller.
+
+### Schema validation
+
+!!! question
+
+    Does this library support JSON Schema validation?
+
+Not directly, but the companion project [json-schema-validator](https://github.com/pboettch/json-schema-validator)
+builds JSON Schema (draft 4, 6, 7, and 2019-09) validation on top of this library and is a common recommendation
+for this use case.
+
 ## Exceptions
 
 ### Parsing without exceptions
@@ -171,6 +194,27 @@ The library uses `std::numeric_limits<number_float_t>::digits10` (15 for IEEE `d
 
 See [this section](../features/types/number_handling.md#number-serialization) on the library's number handling for more information.
 
+### Serializing untrusted or invalid UTF-8
+
+!!! question "Questions"
+
+    - Why does `dump()` throw when I serialize data that came from the network?
+    - Is CVE-2024-34363 a vulnerability in this library?
+
+Crashes reported against this library that stem from an uncaught
+[`type_error.316`](exceptions.md#jsonexceptiontype_error316) while serializing unvalidated input (e.g.,
+CVE-2024-34363) are a usage issue, not a library vulnerability:
+[`dump()`](../api/basic_json/dump.md) throws in its default `strict` mode because
+[RFC 8259](https://datatracker.ietf.org/doc/html/rfc8259#section-8.1) requires JSON text to be valid UTF-8.
+
+The recommended pattern is to pass a non-strict [`error_handler`](../api/basic_json/error_handler_t.md) or to handle the
+exception:
+
+```cpp
+// replace invalid sequences with U+FFFD instead of throwing
+const auto s = j.dump(-1, ' ', false, json::error_handler_t::replace);
+```
+
 ### Using JSON values with `std::format` or `fmt`
 
 !!! question
@@ -178,7 +222,7 @@ See [this section](../features/types/number_handling.md#number-serialization) on
     - Can I use `std::format("{}", j)` on a JSON value?
     - Can I use `fmt::format("{}", j)` or `fmt::print("{}", j)` (the [{fmt}](https://github.com/fmtlib/fmt) library) on a JSON value?
 
-`std::format` works out of the box since version 3.12.x, as long as the standard library provides
+`std::format` works out of the box since version 3.13.0, as long as the standard library provides
 `<format>` (see [`JSON_HAS_STD_FORMAT`](../api/macros/json_has_std_format.md)); see
 [`std::formatter<basic_json>`](../api/basic_json/std_formatter.md) for details, including the `#!cpp "{:#}"`
 pretty-print spec, indent widths (`#!cpp "{:2}"`), and custom indent characters (`#!cpp "{:.>#}"`).
